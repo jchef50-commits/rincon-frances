@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && request.auth.token.role == role;
+    }
+
+    function isAdmin() {
+      return hasRole("admin");
+    }
+
+    function isCocina() {
+      return hasRole("cocina");
+    }
+
+    // Fase 1 de migracion:
+    // mantener compatibilidad total con el sistema actual.
+    // Estas reglas no son restrictivas aun.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

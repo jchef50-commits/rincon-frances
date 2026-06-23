@@ -29,10 +29,17 @@ export default function ProductCard({
       }`}
     >
       <div className="flex justify-between items-start mb-2">
-        <div>
+        <div className="flex-1">
           <h3 className="font-semibold text-sm">{producto.nombre}</h3>
           <p className="text-xs text-gray-600">{producto.descripcion}</p>
         </div>
+        {producto.imagen && (
+          <img
+            src={producto.imagen}
+            alt={producto.nombre}
+            className="ml-2 h-14 w-14 rounded object-cover border border-gray-200"
+          />
+        )}
         <span className="text-lg font-bold text-green-600">${producto.precio}</span>
       </div>
 

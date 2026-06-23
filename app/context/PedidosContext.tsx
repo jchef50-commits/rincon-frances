@@ -3,6 +3,14 @@
 import React, { createContext, useState, useCallback, useEffect } from 'react';
 import { Pedido, EstadoPedido, TipoConsumo, ItemCarrito } from '@/app/types';
 import { storageService } from '@/app/utils/storageService';
+import { hasFirebaseConfig } from '@/app/lib/firebase';
+import { attachPricingToItems, calculateOrderTotal } from '@/app/lib/orderPricing';
+import { ensureAnonymousClientUid } from '@/app/lib/clientIdentity';
+import {
+  actualizarEstadoPedidoFirestore,
+  guardarPedidoFirestore,
+  subscribeToPedidos,
+} from '@/app/lib/pedidosFirestore';
 
 interface PedidosContextType {
   pedidos: Pedido[];
@@ -11,14 +19,20 @@ interface PedidosContextType {
     tipoConsumo: TipoConsumo,
     numeroMesa?: number,
     observacionesGenerales?: string
-  ) => string;
-  cambiarEstadoPedido: (pedidoId: string, nuevoEstado: EstadoPedido) => void;
+  ) => Promise<string>;
+  cambiarEstadoPedido: (pedidoId: string, nuevoEstado: EstadoPedido) => Promise<void>;
   obtenerPedidoPorId: (pedidoId: string) => Pedido | undefined;
   obtenerPedidosPorEstado: (estado: EstadoPedido) => Pedido[];
-  cancelarPedido: (pedidoId: string) => void;
+  cancelarPedido: (pedidoId: string) => Promise<void>;
 }
 
 const PedidosContext = createContext<PedidosContextType | undefined>(undefined);
+
+const normalizarPedido = (pedido: Pedido): Pedido => ({
+  ...pedido,
+  createdAt: new Date(pedido.createdAt),
+  updatedAt: new Date(pedido.updatedAt),
+});
 
 // Mock data para demo
 const generarPedidosMock = (): Pedido[] => {
@@ -61,60 +75,88 @@ const generarPedidosMock = (): Pedido[] => {
 
 export function PedidosProvider({ children }: { children: React.ReactNode }) {
   const [pedidos, setPedidos] = useState<Pedido[]>(() => {
+    if (hasFirebaseConfig) {
+      return [];
+    }
+
     if (typeof window === 'undefined') {
       return generarPedidosMock();
     }
     const pedidosGuardados = storageService.obtenerPedidos();
     if (pedidosGuardados && Array.isArray(pedidosGuardados)) {
-      return [...generarPedidosMock(), ...pedidosGuardados];
+      return [...generarPedidosMock(), ...pedidosGuardados.map(normalizarPedido)];
     }
     return generarPedidosMock();
   });
-  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Marcar como hidratado después del montaje
   useEffect(() => {
-    setIsHydrated(true);
+    if (!hasFirebaseConfig) {
+      return;
+    }
+
+    return subscribeToPedidos(
+      (pedidosFirestore) => {
+        setPedidos(pedidosFirestore);
+      },
+      (error) => {
+        console.error('Error sincronizando pedidos con Firebase:', error);
+      }
+    );
   }, []);
 
   // Guardar pedidos en localStorage cuando cambien
   useEffect(() => {
-    if (isHydrated) {
+    if (!hasFirebaseConfig && typeof window !== 'undefined') {
       // Guardar solo los nuevos pedidos (excluir mock data)
       const nuevosPedidos = pedidos.slice(3);
       storageService.guardarPedidos(nuevosPedidos);
     }
-  }, [pedidos, isHydrated]);
+  }, [pedidos]);
 
   const agregarPedido = useCallback(
-    (
+    async (
       items: ItemCarrito[],
       tipoConsumo: TipoConsumo,
       numeroMesa?: number,
       observacionesGenerales?: string
-    ): string => {
-      const subtotal = items.reduce((total, item) => total + item.producto.precio * item.cantidad, 0);
+    ): Promise<string> => {
+      const uidCliente = await ensureAnonymousClientUid();
+      const itemsConPrecio = attachPricingToItems(items);
+      const { subtotal, total } = calculateOrderTotal(itemsConPrecio);
+      const now = new Date();
+      const pedidoId = `PED-${now.getTime().toString().slice(-6)}`;
 
       const nuevoPedido: Pedido = {
-        id: `PED-${String(pedidos.length + 1).padStart(3, '0')}`,
-        items,
+        id: pedidoId,
+        uidCliente,
+        items: itemsConPrecio,
         estado: EstadoPedido.PENDIENTE,
         tipoConsumo,
         numeroMesa,
         observacionesGenerales,
         subtotal,
-        total: subtotal,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        total,
+        createdAt: now,
+        updatedAt: now,
       };
 
-      setPedidos((prev) => [...prev, nuevoPedido]);
-      return nuevoPedido.id;
+      if (hasFirebaseConfig) {
+        await guardarPedidoFirestore(nuevoPedido);
+      } else {
+        setPedidos((prev) => [...prev, nuevoPedido]);
+      }
+
+      return pedidoId;
     },
-    [pedidos.length]
+    []
   );
 
-  const cambiarEstadoPedido = useCallback((pedidoId: string, nuevoEstado: EstadoPedido) => {
+  const cambiarEstadoPedido = useCallback(async (pedidoId: string, nuevoEstado: EstadoPedido) => {
+    if (hasFirebaseConfig) {
+      await actualizarEstadoPedidoFirestore(pedidoId, nuevoEstado);
+      return;
+    }
+
     setPedidos((prev) =>
       prev.map((pedido) =>
         pedido.id === pedidoId
@@ -138,8 +180,8 @@ export function PedidosProvider({ children }: { children: React.ReactNode }) {
     [pedidos]
   );
 
-  const cancelarPedido = useCallback((pedidoId: string) => {
-    cambiarEstadoPedido(pedidoId, EstadoPedido.CANCELADO);
+  const cancelarPedido = useCallback(async (pedidoId: string) => {
+    await cambiarEstadoPedido(pedidoId, EstadoPedido.CANCELADO);
   }, [cambiarEstadoPedido]);
 
   const value: PedidosContextType = {

@@ -10,9 +10,8 @@ interface TipoConsumoSelectorProps {
 }
 
 const opciones = [
-  { valor: TipoConsumo.MESA, label: '🪑 En mostrador', icon: '🪑' },
-  { valor: TipoConsumo.PARA_LLEVAR, label: '🛍️ Para llevar', icon: '🛍️' },
-  { valor: TipoConsumo.PARA_RECOGER, label: '📦 Para recoger', icon: '📦' },
+  { valor: TipoConsumo.MESA, label: 'Comer aquí', icon: '🍽️' },
+  { valor: TipoConsumo.PARA_LLEVAR, label: 'Llevar o recoger', icon: '🛍️' },
 ];
 
 export function TipoConsumoSelector({
@@ -25,7 +24,7 @@ export function TipoConsumoSelector({
     <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
       <p className="font-semibold">¿Cómo deseas tu pedido?</p>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {opciones.map((opcion) => (
           <button
             key={opcion.valor}
@@ -37,14 +36,14 @@ export function TipoConsumoSelector({
             }`}
           >
             <div className="text-lg mb-1">{opcion.icon}</div>
-            <div className="text-xs font-medium">{opcion.label.split(' ')[1]}</div>
+            <div className="text-xs font-medium">{opcion.label}</div>
           </button>
         ))}
       </div>
 
       {tipoConsumo === TipoConsumo.MESA && onMesaChange && (
         <div>
-          <label className="text-sm font-medium block mb-2">¿En qué mostrador deseas esperar?</label>
+          <label className="text-sm font-medium block mb-2">¿En qué mesa estás?</label>
           <input
             type="number"
             min="1"

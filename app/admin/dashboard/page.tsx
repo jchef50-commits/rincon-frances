@@ -10,6 +10,7 @@ import { ProtectedRoute } from '@/app/components/ProtectedRoute';
 import { menuProductos } from '@/app/data/menu';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { calculateItemPricing } from '@/app/lib/orderPricing';
 
 const estados = [
   EstadoPedido.PENDIENTE,
@@ -78,7 +79,7 @@ export default function AdminDashboardPage() {
         };
       });
 
-      const pedidoId = agregarPedido(
+      const pedidoId = await agregarPedido(
         itemsCarrito,
         data.tipoConsumo,
         data.numeroMesa,
@@ -233,7 +234,7 @@ export default function AdminDashboardPage() {
                           {item.cantidad}x {item.producto.nombre}
                         </span>
                         <span className="font-semibold">
-                          ${item.producto.precio * item.cantidad}
+                          ${calculateItemPricing(item).lineTotal}
                         </span>
                       </div>
                     ))}

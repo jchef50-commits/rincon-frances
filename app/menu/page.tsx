@@ -1,21 +1,35 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
+import { useSyncExternalStore } from 'react';
 import { Categoria } from '@/app/types';
 import { productosPorCategoria } from '@/app/data/menu';
 import { useCarrito } from '@/app/context/CarritoContext';
+import { usePedidos } from '@/app/context/PedidosContext';
 import { Button, ProductCard, CartSummary, TipoConsumoSelector } from '@/app/components';
 import Link from 'next/link';
+import { calculateItemPricing, calculateOrderTotal } from '@/app/lib/orderPricing';
+import { ensureAnonymousClientUid } from '@/app/lib/clientIdentity';
 
 export default function MenuPage() {
   const [categoriaActiva, setCategoriaActiva] = useState<Categoria>(Categoria.CREPAS);
   const [isConfirmLoading, setIsConfirmLoading] = useState(false);
+  const isHydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
-  const { agregarProducto } = useCarrito();
   const { items, tipoConsumo, setTipoConsumo, numeroMesa, setNumeroMesa, limpiarCarrito } =
     useCarrito();
+  const { agregarPedido } = usePedidos();
 
   const productosEnCategoria = productosPorCategoria(categoriaActiva);
+
+  React.useEffect(() => {
+    void ensureAnonymousClientUid();
+  }, []);
 
   const handleConfirmarPedido = async () => {
     if (items.length === 0) {
@@ -36,21 +50,13 @@ export default function MenuPage() {
     setIsConfirmLoading(true);
     await new Promise((res) => setTimeout(res, 800));
 
-    // Calcular total con ingredientes extras
-    const total = items.reduce((sum, item) => {
-      const precioProducto = item.producto.precio * item.cantidad;
-      const precioIngredientes = (item.ingredientesExtra || []).reduce((s, ingredId) => {
-        const ingrediente = item.producto.ingredientes?.find((i) => i.id === ingredId);
-        return s + ((ingrediente?.precio || 0) * item.cantidad);
-      }, 0);
-      return sum + precioProducto + precioIngredientes;
-    }, 0);
+    const { total } = calculateOrderTotal(items);
 
     const detalleItems = items
       .map((i) => {
         let detalle = `- ${i.cantidad}x ${i.producto.nombre}`;
-        const precioBase = i.producto.precio * i.cantidad;
-        detalle += ` ($${precioBase})`;
+        const itemPricing = calculateItemPricing(i);
+        detalle += ` ($${itemPricing.lineTotal.toFixed(0)})`;
 
         if (i.ingredientesExtra && i.ingredientesExtra.length > 0) {
           const ingredientes = i.ingredientesExtra
@@ -71,37 +77,73 @@ export default function MenuPage() {
       })
       .join('\n');
 
-    const resumen = `
+    try {
+      const pedidoId = await agregarPedido(items, tipoConsumo, numeroMesa);
+
+      const resumen = `
 🍽️ PEDIDO CONFIRMADO
+
+🧾 Folio: ${pedidoId}
 
 📝 Productos:
 ${detalleItems}
 
 💰 Total: $${total.toFixed(0)}
 
-🏪 Tipo: ${tipoConsumo === 'mesa' ? `Mesa ${numeroMesa}` : tipoConsumo === 'para_llevar' ? 'Para llevar' : 'Para recoger'}
+🏪 Tipo: ${tipoConsumo === 'mesa' ? `Mesa ${numeroMesa}` : 'Para llevar o pasar a recoger'}
 
 ✅ Tu pedido fue confirmado. El equipo de cocina está preparándolo.
     `;
 
-    alert(resumen);
-    limpiarCarrito();
-    setIsConfirmLoading(false);
+      alert(resumen);
+      limpiarCarrito();
+    } catch (error) {
+      console.error('Error al guardar pedido:', error);
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      alert(`❌ No se pudo guardar el pedido.\n${message}`);
+    } finally {
+      setIsConfirmLoading(false);
+    }
   };
 
   const categorias = Object.values(Categoria);
+  const galeriaMarca = [
+    { src: '/brand/menu-crepas-saladas.jpg', alt: 'Menú de crepas saladas de Rincón Francés' },
+    { src: '/brand/menu-crepas-dulces.jpg', alt: 'Menú de crepas dulces de Rincón Francés' },
+    { src: '/brand/menu-pizzas.jpg', alt: 'Menú de pizzas de Rincón Francés' },
+    { src: '/brand/menu-pastas.jpg', alt: 'Menú de pastas y paninis de Rincón Francés' },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-800">
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
+      <header className="bg-black/90 text-white shadow-sm sticky top-0 z-10 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">🇫🇷 Rincón Francés</h1>
-          <p className="text-gray-600 text-sm">Menú Digital</p>
+          <h1 className="text-4xl md:text-5xl brand-title">Rincón Francés</h1>
+          <p className="text-amber-300 text-sm font-semibold uppercase tracking-wide">Menú Digital</p>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
+        <section className="mb-6 rounded-2xl border border-amber-400/30 bg-black/40 p-4 md:p-6">
+          <div className="mb-4 flex justify-end">
+            <span className="brand-title text-2xl text-amber-200">Rincón Francés</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {galeriaMarca.map((foto) => (
+              <div key={foto.src} className="relative overflow-hidden rounded-xl border border-white/10 bg-black">
+                <Image
+                  src={foto.src}
+                  alt={foto.alt}
+                  width={420}
+                  height={560}
+                  className="h-40 w-full object-cover transition-transform duration-300 hover:scale-105"
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Menú */}
           <div className="lg:col-span-2 space-y-6">
@@ -140,29 +182,28 @@ ${detalleItems}
 
           {/* Carrito Sidebar */}
           <aside className="lg:col-span-1">
-            <div className="sticky top-24 space-y-4">
+            <div className="space-y-4 lg:sticky lg:top-24">
               {/* Selector Tipo Consumo */}
-              <TipoConsumoSelector
-                tipoConsumo={tipoConsumo}
-                numeroMesa={numeroMesa}
-                onSeleccionar={setTipoConsumo}
-                onMesaChange={setNumeroMesa}
-              />
+              {isHydrated && (
+                <TipoConsumoSelector
+                  tipoConsumo={tipoConsumo}
+                  numeroMesa={numeroMesa}
+                  onSeleccionar={setTipoConsumo}
+                  onMesaChange={setNumeroMesa}
+                />
+              )}
 
               {/* Carrito */}
               <div className="bg-white rounded-lg shadow p-4">
                 <h2 className="text-xl font-bold mb-4">🛒 Tu Carrito</h2>
-                {items.length === 0 ? (
+                {!isHydrated ? (
+                  <p className="text-gray-500 text-center py-8">Cargando carrito...</p>
+                ) : items.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">Tu carrito está vacío</p>
                 ) : (
                   <div className="space-y-3">
                     {items.map((item) => {
-                      const precioBase = item.producto.precio * item.cantidad;
-                      const precioIngredientes = (item.ingredientesExtra || []).reduce((s, ingredId) => {
-                        const ingrediente = item.producto.ingredientes?.find((i) => i.id === ingredId);
-                        return s + ((ingrediente?.precio || 0) * item.cantidad);
-                      }, 0);
-                      const precioTotal = precioBase + precioIngredientes;
+                      const precioTotal = calculateItemPricing(item).lineTotal;
 
                       return (
                         <div key={`${item.id}-carrito`} className="pb-3 border-b">
@@ -197,10 +238,12 @@ ${detalleItems}
               </div>
 
               {/* Total y Confirmar */}
-              <CartSummary
-                onConfirmar={handleConfirmarPedido}
-                isConfirmLoading={isConfirmLoading}
-              />
+              {isHydrated && (
+                <CartSummary
+                  onConfirmar={handleConfirmarPedido}
+                  isConfirmLoading={isConfirmLoading}
+                />
+              )}
 
               {/* Link Admin */}
               <div className="bg-gray-200 rounded-lg p-3 text-center">

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Producto, Categoria, Ingrediente } from '@/app/types';
-import { menuProductos, Categoria as CategoriasEnum } from '@/app/data/menu';
+import { Producto, Categoria } from '@/app/types';
+import { menuProductos } from '@/app/data/menu';
 import ProductForm from './ProductForm';
 import ProductCard from './ProductCard';
 
@@ -55,7 +55,7 @@ export default function ProductManagementPanel() {
     }
   };
 
-  const categorias = Object.values(CategoriasEnum);
+  const categorias = Object.values(Categoria);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -144,6 +144,16 @@ export default function ProductManagementPanel() {
                 <p className="text-gray-600 font-semibold">Descripción</p>
                 <p>{selectedProduct.descripcion}</p>
               </div>
+              {selectedProduct.imagen && (
+                <div>
+                  <p className="text-gray-600 font-semibold mb-2">Foto</p>
+                  <img
+                    src={selectedProduct.imagen}
+                    alt={selectedProduct.nombre}
+                    className="w-full max-h-44 object-cover rounded border border-gray-200"
+                  />
+                </div>
+              )}
               <div>
                 <p className="text-gray-600 font-semibold">Precio</p>
                 <p className="text-xl font-bold text-green-600">

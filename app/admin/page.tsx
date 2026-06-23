@@ -7,7 +7,7 @@ import { Button } from '@/app/components';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<AdminRole>(AdminRole.ADMIN);
   const [error, setError] = useState('');
@@ -15,10 +15,10 @@ export default function AdminLoginPage() {
 
   // Si ya está autenticado, redirigir
   React.useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/admin/dashboard');
+    if (isAuthenticated && user) {
+      router.replace(user.role === AdminRole.COCINA ? '/admin/cocina' : '/admin/dashboard');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,11 +27,11 @@ export default function AdminLoginPage() {
 
     await new Promise((res) => setTimeout(res, 500));
 
-    const success = login(password, role);
+    const success = await login(password, role);
     if (success) {
-      router.push('/admin/dashboard');
+      router.replace(role === AdminRole.COCINA ? '/admin/cocina' : '/admin/dashboard');
     } else {
-      setError('❌ Contraseña incorrecta');
+      setError('❌ No se pudo iniciar sesión. Verifica tus credenciales.');
       setPassword('');
     }
 
@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-blue-600 mb-2">🔐 Acceso Admin</h1>
-          <p className="text-gray-600">Ingresa tu contraseña para continuar</p>
+          <p className="text-gray-600">Ingresa la contraseña de tu cuenta para continuar</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
@@ -112,13 +112,6 @@ export default function AdminLoginPage() {
             {isLoading ? '⏳ Verificando...' : '🔓 Ingresar'}
           </button>
         </form>
-
-        {/* Footer */}
-        <div className="mt-8 p-4 bg-blue-50 rounded-lg text-center">
-          <p className="text-xs text-gray-600">
-            💡 <strong>Contraseña:</strong> rincón123
-          </p>
-        </div>
 
         {/* Link Atrás */}
         <div className="mt-4 text-center">

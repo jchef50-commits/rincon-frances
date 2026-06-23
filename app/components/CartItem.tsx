@@ -1,6 +1,7 @@
 'use client';
 
 import { ItemCarrito } from '@/app/types';
+import { calculateItemPricing } from '@/app/lib/orderPricing';
 
 interface CartItemProps {
   item: ItemCarrito;
@@ -9,6 +10,8 @@ interface CartItemProps {
 }
 
 export function CartItem({ item, onActualizarCantidad, onEliminar }: CartItemProps) {
+  const pricing = calculateItemPricing(item);
+
   return (
     <div className="flex gap-4 border-b pb-4 last:border-b-0">
       <div className="flex-1">
@@ -17,7 +20,7 @@ export function CartItem({ item, onActualizarCantidad, onEliminar }: CartItemPro
           <p className="text-sm text-gray-600 italic">Nota: {item.observaciones}</p>
         )}
         <p className="text-sm text-gray-500">
-          ${item.producto.precio} x {item.cantidad} = ${item.producto.precio * item.cantidad}
+          ${pricing.unitPrice} x {item.cantidad} = ${pricing.lineTotal}
         </p>
       </div>
 

@@ -47,10 +47,21 @@ export interface ItemCarrito {
   cantidad: number;
   observaciones?: string;
   ingredientesExtra?: string[]; // IDs de ingredientes extras seleccionados
+  pricing?: ItemPricingSnapshot;
+}
+
+export interface ItemPricingSnapshot {
+  baseUnitPrice: number;
+  extrasUnitPrice: number;
+  observationAdjustment: number;
+  unitPrice: number;
+  lineSubtotal: number;
+  lineTotal: number;
 }
 
 export interface Pedido {
   id: string;
+  uidCliente?: string;
   items: ItemCarrito[];
   estado: EstadoPedido;
   tipoConsumo: TipoConsumo;

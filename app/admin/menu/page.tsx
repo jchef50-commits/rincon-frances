@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, AdminRole } from '@/app/context/AuthContext';
 import { ProtectedRoute } from '@/app/components/ProtectedRoute';
@@ -23,7 +22,7 @@ export default function AdminMenuPage() {
         <header className="bg-white shadow-md sticky top-0 z-20">
           <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold">🇫🇷 Rincón Francés</h1>
+              <h1 className="text-4xl brand-title">Rincón Francés</h1>
               <p className="text-sm text-gray-600">Gestión de Menú y Productos</p>
             </div>
             <div className="flex gap-3 items-center">

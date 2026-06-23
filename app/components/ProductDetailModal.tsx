@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Producto, ItemCarrito } from '@/app/types';
 import { useCarrito } from '@/app/context/CarritoContext';
+import { calculateItemPricing } from '@/app/lib/orderPricing';
 
 interface ProductDetailModalProps {
   producto: Producto;
@@ -20,12 +21,15 @@ export default function ProductDetailModal({
   const [ingredientesExtra, setIngredientesExtra] = useState<string[]>([]);
   const { agregarAlCarrito } = useCarrito();
 
-  const precioIngredientes = ingredientesExtra.reduce((total, ingredId) => {
-    const ingrediente = producto.ingredientes?.find((i) => i.id === ingredId);
-    return total + (ingrediente?.precio || 0);
-  }, 0);
-
-  const precioTotal = (producto.precio + precioIngredientes) * cantidad;
+  const draftItem: ItemCarrito = {
+    id: 'draft',
+    productoId: producto.id,
+    producto,
+    cantidad,
+    observaciones: observaciones || undefined,
+    ingredientesExtra: ingredientesExtra.length > 0 ? ingredientesExtra : undefined,
+  };
+  const pricing = calculateItemPricing(draftItem);
 
   const handleToggleIngrediente = (ingredId: string) => {
     setIngredientesExtra((prev) =>
@@ -64,6 +68,13 @@ export default function ProductDetailModal({
           >
             ✕
           </button>
+          {producto.imagen && (
+            <img
+              src={producto.imagen}
+              alt={producto.nombre}
+              className="mb-4 h-52 w-full rounded object-cover"
+            />
+          )}
           <h2 className="text-3xl font-bold text-gray-800">{producto.nombre}</h2>
           <p className="mt-2 text-gray-600">{producto.descripcion}</p>
           <p className="mt-2 text-xl font-semibold text-blue-600">
@@ -147,18 +158,18 @@ export default function ProductDetailModal({
         <div className="mb-6 rounded-lg bg-gray-100 p-4">
           <div className="flex justify-between text-gray-700">
             <span>Producto:</span>
-            <span>${(producto.precio * cantidad).toFixed(0)}</span>
+            <span>${pricing.lineSubtotal.toFixed(0)}</span>
           </div>
-          {precioIngredientes > 0 && (
+          {pricing.extrasUnitPrice > 0 && (
             <div className="flex justify-between text-gray-700">
               <span>Ingredientes Extra:</span>
-              <span>${(precioIngredientes * cantidad).toFixed(0)}</span>
+            <span>${(pricing.extrasUnitPrice * cantidad).toFixed(0)}</span>
             </div>
           )}
           <div className="mt-2 border-t border-gray-300 pt-2">
             <div className="flex justify-between text-xl font-bold text-gray-800">
               <span>Total:</span>
-              <span className="text-green-600">${precioTotal.toFixed(0)}</span>
+            <span className="text-green-600">${pricing.lineTotal.toFixed(0)}</span>
             </div>
           </div>
         </div>

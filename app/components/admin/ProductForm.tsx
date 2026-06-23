@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Producto, Categoria, Ingrediente } from '@/app/types';
-import { Categoria as CategoriasEnum } from '@/app/data/menu';
 
 interface ProductFormProps {
   producto?: Producto;
@@ -18,7 +17,8 @@ export default function ProductForm({
   const [nombre, setNombre] = useState(producto?.nombre || '');
   const [descripcion, setDescripcion] = useState(producto?.descripcion || '');
   const [precio, setPrecio] = useState(producto?.precio?.toString() || '');
-  const [categoria, setCategoria] = useState(producto?.categoria || CategoriasEnum.CREPAS);
+  const [imagen, setImagen] = useState(producto?.imagen || '');
+  const [categoria, setCategoria] = useState(producto?.categoria || Categoria.CREPAS);
   const [disponible, setDisponible] = useState(producto?.disponible !== false);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>(
     producto?.ingredientes || []
@@ -26,7 +26,7 @@ export default function ProductForm({
   const [nuevoIngrediente, setNuevoIngrediente] = useState('');
   const [nuevoIngredientePrecio, setNuevoIngredientePrecio] = useState('');
 
-  const categorias = Object.values(CategoriasEnum);
+  const categorias = Object.values(Categoria);
 
   const handleAgregarIngrediente = () => {
     if (!nuevoIngrediente.trim()) {
@@ -64,6 +64,7 @@ export default function ProductForm({
       precio: parseInt(precio),
       categoria,
       disponible,
+      imagen: imagen.trim() || undefined,
       ingredientes:
         ingredientes.length > 0 ? ingredientes : undefined,
     };
@@ -126,6 +127,18 @@ export default function ProductForm({
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Imagen */}
+      <div>
+        <label className="block font-semibold mb-1">Foto (URL opcional)</label>
+        <input
+          type="url"
+          value={imagen}
+          onChange={(e) => setImagen(e.target.value)}
+          className="w-full border rounded px-2 py-1"
+          placeholder="https://.../foto.jpg"
+        />
       </div>
 
       {/* Disponible */}

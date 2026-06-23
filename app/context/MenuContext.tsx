@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useState, useCallback, useEffect } from 'react';
-import { Producto, Ingrediente, Categoria } from '@/app/types';
+import { Producto, Ingrediente } from '@/app/types';
 import { menuProductos as productosIniciales } from '@/app/data/menu';
 import { storageService } from '@/app/utils/storageService';
 
@@ -35,17 +35,11 @@ export function MenuProvider({ children }: { children: React.ReactNode }) {
     return productosIniciales;
   });
 
-  const [isHydrated, setIsHydrated] = useState(false);
-
   useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (isHydrated) {
+    if (typeof window !== 'undefined') {
       storageService.setItem('menu_productos', JSON.stringify(productos));
     }
-  }, [productos, isHydrated]);
+  }, [productos]);
 
   const agregarProducto = useCallback((producto: Producto) => {
     const nuevoId =

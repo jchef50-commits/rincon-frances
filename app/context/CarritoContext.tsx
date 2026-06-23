@@ -4,6 +4,7 @@ import React, { createContext, useState, useCallback, useEffect } from 'react';
 import { ItemCarrito, CarritoState, TipoConsumo } from '@/app/types';
 import { obtenerProductoPorId } from '@/app/data/menu';
 import { storageService } from '@/app/utils/storageService';
+import { calculateOrderTotal } from '@/app/lib/orderPricing';
 
 interface CarritoContextType extends CarritoState {
   agregarProducto: (productoId: number, cantidad: number, observaciones?: string) => void;
@@ -43,19 +44,12 @@ export function CarritoProvider({ children }: { children: React.ReactNode }) {
     };
   });
   
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // Marcar como hidratado después del montaje
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
   // Guardar carrito en localStorage cuando cambie
   useEffect(() => {
-    if (isHydrated) {
+    if (typeof window !== 'undefined') {
       storageService.guardarCarrito(carrito);
     }
-  }, [carrito, isHydrated]);
+  }, [carrito]);
 
   const agregarProducto = useCallback(
     (productoId: number, cantidad: number, observaciones?: string) => {
@@ -140,6 +134,7 @@ export function CarritoProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const limpiarCarrito = useCallback(() => {
+    storageService.limpiarCarrito();
     setCarrito({
       items: [],
       tipoConsumo: null,
@@ -149,14 +144,7 @@ export function CarritoProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const obtenerSubtotal = useCallback(() => {
-    return carrito.items.reduce((total, item) => {
-      const precioProducto = item.producto.precio * item.cantidad;
-      const precioIngredientes = (item.ingredientesExtra || []).reduce((sum, ingredId) => {
-        const ingrediente = item.producto.ingredientes?.find((i) => i.id === ingredId);
-        return sum + ((ingrediente?.precio || 0) * item.cantidad);
-      }, 0);
-      return total + precioProducto + precioIngredientes;
-    }, 0);
+    return calculateOrderTotal(carrito.items).subtotal;
   }, [carrito.items]);
 
   const obtenerTotal = useCallback(() => {

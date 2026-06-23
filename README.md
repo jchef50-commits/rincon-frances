@@ -16,6 +16,39 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Firebase setup (Pedidos en tiempo real)
+
+1. Copia `.env.example` a `.env.local`.
+2. Llena los valores `NEXT_PUBLIC_FIREBASE_*` con tu proyecto de Firebase.
+3. Crea una colección `pedidos` en Firestore.
+4. Reinicia el servidor con `npm run dev`.
+
+Si no configuras Firebase, la app sigue funcionando con almacenamiento local.
+
+## Migración de autenticación (Fase 2A)
+
+Se agregó un feature flag para migrar sin romper el flujo actual:
+
+- `NEXT_PUBLIC_AUTH_MIGRATION_MODE=firebase` (default): usa Firebase Auth Email/Password para admin/cocina.
+- `NEXT_PUBLIC_AUTH_MIGRATION_MODE=hybrid`: intenta Firebase Auth y, si falla, vuelve al sistema actual.
+- `NEXT_PUBLIC_AUTH_MIGRATION_MODE=legacy`: usa el sistema previo (solo compatibilidad temporal).
+
+Variables requeridas para login por rol en Firebase:
+
+- `NEXT_PUBLIC_FIREBASE_ADMIN_EMAIL`
+- `NEXT_PUBLIC_FIREBASE_COCINA_EMAIL`
+
+Prueba rápida de login Firebase (Fase 2A):
+
+1. En Firebase Console habilita **Authentication > Sign-in method > Email/Password**.
+2. Crea las cuentas de admin y cocina.
+3. Configura en `.env.local`:
+   - `NEXT_PUBLIC_AUTH_MIGRATION_MODE=firebase`
+   - `NEXT_PUBLIC_FIREBASE_ADMIN_EMAIL=...`
+   - `NEXT_PUBLIC_FIREBASE_COCINA_EMAIL=...`
+4. Reinicia con `npm run dev`.
+5. En `/admin`, selecciona rol y usa la contraseña de esa cuenta de Firebase Auth.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
